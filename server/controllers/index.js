@@ -2,6 +2,7 @@
 const models = require('../models');
 
 const Cat = models.Cat.CatModel;
+const Dog = models.Dog.DogModel;
 
 // default fake data so that we have something to work with until we make a real Cat
 const defaultData = {
@@ -24,6 +25,10 @@ const readAllCats = (req, res, callback) => {
   Cat.find(callback);
 };
 
+const readAllDogs = (req, res, callback) => {
+  Dog.find(callback);
+};
+
 const readCat = (req, res) => {
   const name1 = req.query.name;
 
@@ -36,6 +41,20 @@ const readCat = (req, res) => {
   };
 
   Cat.findByName(name1, callback);
+};
+
+const readDog = (req, res) => {
+  const name1 = req.query.name;
+
+  const callback = (err, doc) => {
+    if (err) {
+      return res.json({ err });
+    }
+
+    return res.json(doc);
+  };
+
+  Dog.findByName(name1, callback);
 };
 
 const hostPage1 = (req, res) => {
@@ -56,6 +75,18 @@ const hostPage2 = (req, res) => {
 
 const hostPage3 = (req, res) => {
   res.render('page3');
+};
+
+const hostPage4 = (req, res) => {
+  const callback = (err, docs) => {
+    if (err) {
+      return res.json({ err }); // if error, return it
+    }
+
+    return res.render('page4', { dogs: docs });
+  };
+
+  readAllDogs(req, res, callback);
 };
 
 const getName = (req, res) => {
@@ -89,6 +120,34 @@ const setName = (req, res) => {
   return res;
 };
 
+const setDogName = (req, res) => {
+  if (!req.body.firstname || !req.body.lastname || !req.body.breed || !req.body.age) {
+    return res.status(400).json({ error: 'firstname,lastname, breed, and age are all required' });
+  }
+
+  const name = `${req.body.firstname} ${req.body.lastname}`;
+
+  // dummy JSON to insert into database
+  const dogData = {
+    name,
+    breed: req.body.breed,
+    age: req.body.age,
+  };
+
+  const newDog = new Dog(dogData);
+
+  const savePromise = newDog.save();
+
+  savePromise.then(() => {
+    lastAdded = newDog;
+    res.json({ name: lastAdded.name, breed: lastAdded.breed, age: lastAdded.age });
+  });
+
+  savePromise.catch(err => res.json({ err }));
+
+  return res;
+};
+
 
 const searchName = (req, res) => {
   if (!req.query.name) {
@@ -105,6 +164,30 @@ const searchName = (req, res) => {
     }
 
     return res.json({ name: doc.name, beds: doc.bedsOwned });
+  });
+};
+
+const searchDogName = (req, res) => {
+  if (!req.body.name) {
+    return res.json({ error: 'Name is required to perform a search' });
+  }
+
+  return Dog.findByName(req.body.name, (error, doc) => {
+    if (error) {
+      return res.json({ error }); // if error, return it
+    }
+
+    if (!doc) {
+      return res.json({ error: 'No dogs found' });
+    }
+
+    const savePromise = doc.save();
+
+    savePromise.then(() => res.json({ name: doc.name, breed: doc.breed, age: doc.age + 1 }));
+
+    savePromise.catch(err => res.json({ err }));
+
+    return true;
   });
 };
 
@@ -129,10 +212,14 @@ module.exports = {
   page1: hostPage1,
   page2: hostPage2,
   page3: hostPage3,
+  page4: hostPage4,
   readCat,
+  readDog,
   getName,
   setName,
+  setDogName,
   updateLast,
   searchName,
+  searchDogName,
   notFound,
 };
